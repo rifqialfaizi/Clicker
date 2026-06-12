@@ -29,7 +29,7 @@ struct ContentView: View {
             stepsListView
         }
         .frame(minWidth: 500, minHeight: 320)
-        .background(.clear)
+        .padding(.leading, 8)
         .alert(viewModel.editingStepIndex != nil ? "Edit Step" : "Name this Step", isPresented: $viewModel.showNamingAlert) {
             TextField("e.g. click profile button", text: $newStepName)
             TextField("Default delay is 2 second", value: $delayStep, format: .number)
@@ -54,8 +54,8 @@ struct ContentView: View {
                 Text("Please enter a name for the step.")
             }
         }
-        .onChange(of: viewModel.showNamingAlert) { show in
-            if show {
+        .onChange(of: viewModel.showNamingAlert) { oldValue, newValue in
+            if newValue {
                 if let index = viewModel.editingStepIndex {
                     let step = viewModel.steps[index]
                     newStepName = step.text
@@ -81,36 +81,22 @@ struct ContentView: View {
                         
             actionButtonsView
             
-            // Status Box
             if viewModel.isRunning {
-                HStack(spacing: 6) {
-                    Circle()
-                        .fill(Color.green)
-                        .frame(width: 6, height: 6)
-                    Text("Cycle \(viewModel.completedCycles + 1)\(viewModel.config.repeatCount > 0 ? "/\(viewModel.config.repeatCount)" : "")")
-                        .font(.system(size: 11, weight: .medium))
-                }
-                .padding(.vertical, 6)
-                .padding(.horizontal, 12)
-                .background(Color.green.opacity(0.12))
-                .cornerRadius(12)
-                .transition(.opacity)
+                statusChip
             }
         }
+        .padding(.bottom, 12)
         .frame(width: 180)
         .glassEffect(in: .rect(cornerRadius: 32.0))
     }
     
     private var sidebarHeader: some View {
         VStack(spacing: 8) {
-            Image(systemName: "hand.tap.fill")
-                .font(.system(size: 36))
-            
-            Text("Auto Clicker")
+            Text("Clicker")
                 .font(.headline)
                 .fontWeight(.bold)
         }
-        .padding(.top, 10)
+        .padding(.top, 26)
     }
     
     private var repeatConfigView: some View {
@@ -145,7 +131,7 @@ struct ContentView: View {
     }
     
     private var actionButtonsView: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: -10) {
             // Add Step Button
             Button(action: {
                 viewModel.startRecordingStep()
@@ -159,15 +145,6 @@ struct ContentView: View {
                 .padding()
                 .glassEffect()
                 .padding(.vertical, 10)
-//                .background(
-//                    LinearGradient(
-//                        colors: viewModel.isRecording ? [.orange, .red] : [.blue, .purple],
-//                        startPoint: .leading,
-//                        endPoint: .trailing
-//                    )
-//                )
-//                .cornerRadius(8)
-//                .shadow(color: (viewModel.isRecording ? Color.orange : Color.blue).opacity(0.2), radius: 6, x: 0, y: 3)
             }
             .buttonStyle(.plain)
             .scaleEffect(isHoveringAdd ? 1.02 : 1.0)
@@ -176,7 +153,7 @@ struct ContentView: View {
                 isHoveringAdd = hovering
             }
             
-            // Run Steps Button
+            //MARK: Run Steps Button
             Button(action: {
                 viewModel.toggleClicking()
             }) {
@@ -188,7 +165,6 @@ struct ContentView: View {
                 }
                 .padding()
                 .glassEffect()
-//                .foregroundColor(.white)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
             }
@@ -199,6 +175,21 @@ struct ContentView: View {
                 isHoveringToggle = hovering
             }
         }
+    }
+    
+    private var statusChip: some View {
+            HStack(spacing: 6) {
+                Circle()
+                    .fill(viewModel.isDelaying ? Color.orange : Color.green)
+                    .frame(width: 6, height: 6)
+                Text(viewModel.isDelaying ? "Starting in 2s..." : "Cycle \(viewModel.completedCycles + 1)\(viewModel.config.repeatCount > 0 ? "/\(viewModel.config.repeatCount)" : "")")
+                    .font(.system(size: 11, weight: .medium))
+            }
+            .padding(.vertical, 6)
+            .padding(.horizontal, 12)
+            .background((viewModel.isDelaying ? Color.orange : Color.green).opacity(0.12))
+            .cornerRadius(12)
+            .transition(.opacity)
     }
     
     private var stepsListView: some View {

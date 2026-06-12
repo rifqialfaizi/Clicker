@@ -70,6 +70,7 @@ class ClickerViewModel: ObservableObject {
     }
     @Published var isRunning: Bool = false
     @Published var isRecording: Bool = false
+    @Published var isDelaying: Bool = false
     @Published var steps: [StepModel] = [] {
         didSet {
             saveSteps()
@@ -82,6 +83,8 @@ class ClickerViewModel: ObservableObject {
     
     private var overlayWindow: OverlayWindow?
     private var currentStepIndex = 0
+    private var localMonitor: Any?
+    private var globalMonitor: Any?
     
     init() {
         if let configData = UserDefaults.standard.data(forKey: "clicker_config"),
@@ -110,13 +113,52 @@ class ClickerViewModel: ObservableObject {
     private func startClicking() {
         guard !steps.isEmpty else { return }
         isRunning = true
+        isDelaying = true
         currentStepIndex = 0
         completedCycles = 0
-        runNextStep()
+        
+        registerEscapeKeyMonitor()
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) { [weak self] in
+            guard let self = self, self.isRunning else { return }
+            self.isDelaying = false
+            self.runNextStep()
+        }
     }
     
     private func stopClicking() {
         isRunning = false
+        isDelaying = false
+        removeEscapeKeyMonitor()
+    }
+    
+    private func registerEscapeKeyMonitor() {
+        removeEscapeKeyMonitor()
+        
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { // ESC key
+                self?.stopClicking()
+                return nil // consume the event
+            }
+            return event
+        }
+        
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            if event.keyCode == 53 { // ESC key
+                self?.stopClicking()
+            }
+        }
+    }
+    
+    private func removeEscapeKeyMonitor() {
+        if let local = localMonitor {
+            NSEvent.removeMonitor(local)
+            localMonitor = nil
+        }
+        if let global = globalMonitor {
+            NSEvent.removeMonitor(global)
+            globalMonitor = nil
+        }
     }
     
     private func runNextStep() {
