@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import CoreGraphics
 import AppKit
+import AVFoundation
 
 class OverlayWindow: NSWindow {
     var onClick: (CGPoint?) -> Void
@@ -83,6 +84,7 @@ class ClickerViewModel: ObservableObject {
     
     private var overlayWindow: OverlayWindow?
     private var currentStepIndex = 0
+    private var audioPlayer: AVQueuePlayer?
     private var localMonitor: Any?
     private var globalMonitor: Any?
     
@@ -169,6 +171,7 @@ class ClickerViewModel: ObservableObject {
             completedCycles += 1
             if config.repeatCount > 0 && completedCycles >= config.repeatCount {
                 stopClicking()
+                playCompletionSound(loop: 2)
                 return
             }
         }
@@ -301,5 +304,36 @@ class ClickerViewModel: ObservableObject {
         if let encoded = try? JSONEncoder().encode(steps) {
             UserDefaults.standard.set(encoded, forKey: "clicker_steps")
         }
+    }
+    
+    private func playCompletionSound(loop: Int = 2) {
+        let url: URL?
+        if let bundleURL = Bundle.main.url(forResource: "boxbox", withExtension: "mp4") {
+            url = bundleURL
+        } else if let bundleURL = Bundle.main.url(forResource: "boxbox", withExtension: "mp4", subdirectory: "Audio assets") {
+            url = bundleURL
+        } else {
+            let absolutePath = "/Users/rifqialfaizi/Dev/Clicker/Audio assets/boxbox.mp4"
+            let fileURL = URL(fileURLWithPath: absolutePath)
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                url = fileURL
+            } else {
+                url = nil
+                print("Audio file not found at \(absolutePath)")
+            }
+        }
+        
+        if let playURL = url {
+            playAudio(at: playURL, count: loop)
+        }
+    }
+    
+    private func playAudio(at url: URL, count: Int) {
+        var items: [AVPlayerItem] = []
+        for _ in 0..<count {
+            items.append(AVPlayerItem(url: url))
+        }
+        self.audioPlayer = AVQueuePlayer(items: items)
+        self.audioPlayer?.play()
     }
 }
